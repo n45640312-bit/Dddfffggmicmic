@@ -1,202 +1,204 @@
 package com.extreme.audioamplifier
 
-import android.media.AudioAttributes
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
+import com.arthenica.ffmpegkit.Level
 import com.arthenica.ffmpegkit.ReturnCode
 import kotlinx.coroutines.*
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
-/**
- * Core real-time-ish audio engine.
- * Captures from mic → writes short WAV chunks → FFmpeg processes → plays via AudioTrack.
- * Latency target: 200-500 ms (acceptable per requirements).
- */
-class AudioEngine(private val cacheDir: File) {
+class AudioEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "AudioEngine"
-        private const val SAMPLE_RATE = 48000
+        private const val SAMPLE_RATE = 44100
         private const val CHANNEL_CONFIG_IN = AudioFormat.CHANNEL_IN_MONO
         private const val CHANNEL_CONFIG_OUT = AudioFormat.CHANNEL_OUT_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        // ~200 ms chunks (good balance for FFmpeg overhead + latency)
         private const val CHUNK_MS = 200
-        private val CHUNK_SAMPLES = SAMPLE_RATE * CHUNK_MS / 1000
-        private val CHUNK_BYTES = CHUNK_SAMPLES * 2 // 16-bit
     }
+
+    private val isRunning = AtomicBoolean(false)
+    private val paramsRef = AtomicReference(FilterParams())
+    private var engineJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private var audioRecord: AudioRecord? = null
     private var audioTrack: AudioTrack? = null
-    private val isRunning = AtomicBoolean(false)
-    private var processingJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @Volatile
-    var params = FilterParams()
-
-    var onStatus: ((String) -> Unit)? = null
     var onError: ((String) -> Unit)? = null
+    var onStatus: ((String) -> Unit)? = null
+
+    fun updateParams(params: FilterParams) {
+        paramsRef.set(params)
+    }
 
     fun start() {
         if (isRunning.get()) return
-        isRunning.set(true)
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            onError?.invoke("Mic permission not granted")
+            return
+        }
 
         try {
-            val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_IN, AUDIO_FORMAT)
-            val bufSize = maxOf(minBuf * 2, CHUNK_BYTES * 2)
-
-            audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION, // less AGC / less processing
-                SAMPLE_RATE,
-                CHANNEL_CONFIG_IN,
-                AUDIO_FORMAT,
-                bufSize
-            )
-
-            val outMin = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_OUT, AUDIO_FORMAT)
-            audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setSampleRate(SAMPLE_RATE)
-                        .setEncoding(AUDIO_FORMAT)
-                        .setChannelMask(CHANNEL_CONFIG_OUT)
-                        .build()
-                )
-                .setBufferSizeInBytes(maxOf(outMin * 2, CHUNK_BYTES * 2))
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-
-            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                throw IllegalStateException("AudioRecord init failed")
-            }
-            if (audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
-                throw IllegalStateException("AudioTrack init failed")
-            }
-
-            audioRecord?.startRecording()
-            audioTrack?.play()
-
-            onStatus?.invoke("Amplifying…")
-            processingJob = scope.launch { processLoop() }
-
+            FFmpegKitConfig.setLogLevel(Level.AV_LOG_ERROR)
         } catch (e: Exception) {
-            Log.e(TAG, "Start failed", e)
-            onError?.invoke(e.message ?: "Start failed")
-            stop()
+            Log.e(TAG, "FFmpegKitConfig failed", e)
+        }
+
+        isRunning.set(true)
+        engineJob = scope.launch {
+            try {
+                processLoop()
+            } catch (e: Exception) {
+                Log.e(TAG, "Engine crashed", e)
+                onError?.invoke("Engine error: ${e.message}")
+            } finally {
+                isRunning.set(false)
+                cleanup()
+            }
         }
     }
 
     fun stop() {
         isRunning.set(false)
-        processingJob?.cancel()
-        processingJob = null
+        engineJob?.cancel()
+        engineJob = null
+        cleanup()
+        onStatus?.invoke("Stopped")
+    }
 
-        try {
-            audioRecord?.stop()
-            audioRecord?.release()
-        } catch (_: Exception) {}
+    private fun cleanup() {
+        try { audioRecord?.stop() } catch (_: Exception) {}
+        try { audioRecord?.release() } catch (_: Exception) {}
         audioRecord = null
-
-        try {
-            audioTrack?.stop()
-            audioTrack?.release()
-        } catch (_: Exception) {}
+        try { audioTrack?.stop() } catch (_: Exception) {}
+        try { audioTrack?.release() } catch (_: Exception) {}
         audioTrack = null
-
-        onStatus?.invoke("Ready")
     }
 
     private suspend fun processLoop() {
-        val inBuf = ByteArray(CHUNK_BYTES)
-        val wavHeaderSize = 44
+        val minRec = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_IN, AUDIO_FORMAT)
+        val minTrack = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_OUT, AUDIO_FORMAT)
+
+        if (minRec <= 0 || minTrack <= 0) {
+            onError?.invoke("Audio buffer error: $minRec / $minTrack")
+            return
+        }
+
+        val chunkBytes = (SAMPLE_RATE * CHUNK_MS / 1000) * 2
+        val bufferSize = maxOf(minRec * 2, chunkBytes * 2)
+
+        try {
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                SAMPLE_RATE,
+                CHANNEL_CONFIG_IN,
+                AUDIO_FORMAT,
+                bufferSize
+            )
+        } catch (e: Exception) {
+            onError?.invoke("AudioRecord create failed: ${e.message}")
+            return
+        }
+
+        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+            onError?.invoke("AudioRecord not initialized")
+            return
+        }
+
+        try {
+            audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                SAMPLE_RATE,
+                CHANNEL_CONFIG_OUT,
+                AUDIO_FORMAT,
+                maxOf(minTrack * 2, chunkBytes * 2),
+                AudioTrack.MODE_STREAM
+            )
+        } catch (e: Exception) {
+            onError?.invoke("AudioTrack create failed: ${e.message}")
+            return
+        }
+
+        if (audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
+            onError?.invoke("AudioTrack not initialized")
+            return
+        }
+
+        val inputBuffer = ByteArray(chunkBytes)
+        val cacheDir = context.cacheDir
+
+        try {
+            audioRecord?.startRecording()
+            audioTrack?.play()
+            onStatus?.invoke("Running")
+        } catch (e: Exception) {
+            onError?.invoke("Start failed: ${e.message}")
+            return
+        }
+
+        var chunkIndex = 0L
 
         while (isRunning.get()) {
+            val read = try {
+                audioRecord?.read(inputBuffer, 0, inputBuffer.size) ?: -1
+            } catch (e: Exception) {
+                Log.e(TAG, "Read error", e)
+                -1
+            }
+
+            if (read <= 0) {
+                delay(10)
+                continue
+            }
+
+            val inFile = File(cacheDir, "in_$chunkIndex.pcm")
+            val outFile = File(cacheDir, "out_$chunkIndex.pcm")
+
             try {
-                val read = audioRecord?.read(inBuf, 0, inBuf.size) ?: -1
-                if (read <= 0) {
-                    delay(10)
-                    continue
-                }
+                inFile.writeBytes(inputBuffer.copyOf(read))
 
-                // Write temporary input WAV
-                val inFile = File(cacheDir, "in_${System.nanoTime()}.wav")
-                val outFile = File(cacheDir, "out_${System.nanoTime()}.wav")
-
-                writeWav(inFile, inBuf, read)
-
-                val filter = params.buildFilterGraph(SAMPLE_RATE)
-                val cmd = "-y -i \"${inFile.absolutePath}\" -af \"$filter\" -acodec pcm_s16le -ar $SAMPLE_RATE -ac 1 \"${outFile.absolutePath}\""
+                val filter = paramsRef.get().toFilterString()
+                val cmd = "-y -f s16le -ar $SAMPLE_RATE -ac 1 -i ${inFile.absolutePath} " +
+                        "-af \"$filter\" -f s16le -ar $SAMPLE_RATE -ac 1 ${outFile.absolutePath}"
 
                 val session = FFmpegKit.execute(cmd)
-                if (ReturnCode.isSuccess(session.returnCode)) {
-                    // Read processed PCM (skip WAV header)
-                    if (outFile.exists() && outFile.length() > wavHeaderSize) {
-                        FileInputStream(outFile).use { fis ->
-                            fis.skip(wavHeaderSize.toLong())
-                            val pcm = fis.readBytes()
-                            if (pcm.isNotEmpty()) {
-                                audioTrack?.write(pcm, 0, pcm.size)
-                            }
-                        }
+
+                if (ReturnCode.isSuccess(session.returnCode) && outFile.exists()) {
+                    val processed = outFile.readBytes()
+                    if (processed.isNotEmpty()) {
+                        audioTrack?.write(processed, 0, processed.size)
                     }
                 } else {
+                    // Fallback: play original if filter fails
+                    audioTrack?.write(inputBuffer, 0, read)
                     Log.w(TAG, "FFmpeg failed: ${session.failStackTrace}")
-                    // Fallback: play original so audio doesn't go silent
-                    audioTrack?.write(inBuf, 0, read)
                 }
-
-                // Cleanup
+            } catch (e: Exception) {
+                Log.e(TAG, "Chunk error", e)
+                try { audioTrack?.write(inputBuffer, 0, read) } catch (_: Exception) {}
+            } finally {
                 inFile.delete()
                 outFile.delete()
-
-            } catch (e: CancellationException) {
-                break
-            } catch (e: Exception) {
-                Log.e(TAG, "Process error", e)
-                delay(50)
             }
-        }
-    }
 
-    private fun writeWav(file: File, pcm: ByteArray, length: Int) {
-        FileOutputStream(file).use { fos ->
-            val totalDataLen = length + 36
-            val byteRate = SAMPLE_RATE * 1 * 16 / 8
-
-            val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
-            header.put("RIFF".toByteArray())
-            header.putInt(totalDataLen)
-            header.put("WAVE".toByteArray())
-            header.put("fmt ".toByteArray())
-            header.putInt(16) // subchunk1 size
-            header.putShort(1) // PCM
-            header.putShort(1) // mono
-            header.putInt(SAMPLE_RATE)
-            header.putInt(byteRate)
-            header.putShort(2) // block align
-            header.putShort(16) // bits
-            header.put("data".toByteArray())
-            header.putInt(length)
-
-            fos.write(header.array())
-            fos.write(pcm, 0, length)
+            chunkIndex++
+            if (chunkIndex > 100000) chunkIndex = 0
         }
     }
 
