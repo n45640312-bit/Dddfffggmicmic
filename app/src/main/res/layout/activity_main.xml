@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="EXTREME AUDIO AMPLIFIER"
+        android:textColor="@color/slider_active"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="12dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/status_idle"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:paddingBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ScrollView
+        android:id="@+id/scrollSliders"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/tvStatus"
+        app:layout_constraintBottom_toTopOf="@id/btnToggle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <!-- Gain -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="GAIN" android:textColor="@color/text_primary" android:textStyle="bold"/>
+            <TextView android:id="@+id/tvGainValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekGain" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="400" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Volume -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="VOLUME" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvVolumeValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekVolume" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="300" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Loudness -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="LOUDNESS" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvLoudnessValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekLoudness" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="250" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Clarity -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="CLARITY" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvClarityValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekClarity" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="180" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Presence -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="PRESENCE (clear without reducing loudness)" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvPresenceValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekPresence" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="200" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Noise Cancellation -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="NOISE CANCELLATION" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvNoiseCancelValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekNoiseCancel" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="300" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Noise (opposite) -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="NOISE (opposite of cancellation)" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvNoiseValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekNoise" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="200" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <!-- Treble -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="TREBLE" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvTrebleValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekTreble" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="240" android:progress="120" android:progressTint="@color/slider_active"/>
+
+            <!-- Bass -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="BASS" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvBassValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0 dB" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekBass" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="240" android:progress="120" android:progressTint="@color/slider_active"/>
+
+            <!-- Pitch Shift -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="PITCH SHIFT" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvPitchValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="1.00x" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekPitch" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="150" android:progress="50" android:progressTint="@color/slider_active"/>
+
+            <!-- Echo types -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="ECHO - SLAPBACK (short)" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="16dp"/>
+            <TextView android:id="@+id/tvEchoSlapValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekEchoSlap" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="ECHO - 1x / MEDIUM" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvEcho1xValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekEcho1x" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="ECHO - 2x / LONG" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvEcho2xValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekEcho2x" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="ECHO - LOOP / FEEDBACK" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvEchoLoopValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekEchoLoop" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="ECHO - HALL / REVERB-LIKE" android:textColor="@color/text_primary" android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/tvEchoHallValue" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="0" android:textColor="@color/slider_active" android:textSize="12sp"/>
+            <SeekBar android:id="@+id/seekEchoHall" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="0" android:progressTint="@color/slider_active"/>
+
+            <View android:layout_width="match_parent" android:layout_height="24dp"/>
+        </LinearLayout>
+    </ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnToggle"
+        android:layout_width="0dp"
+        android:layout_height="60dp"
+        android:text="@string/start"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:backgroundTint="@color/success"
+        android:layout_margin="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

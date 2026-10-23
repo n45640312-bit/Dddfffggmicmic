@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#FF1A237E</color>
+    <color name="primary_dark">#FF0D1442</color>
+    <color name="accent">#FFFF4081</color>
+    <color name="background">#FF121212</color>
+    <color name="surface">#FF1E1E1E</color>
+    <color name="slider_active">#FF00E676</color>
+    <color name="slider_inactive">#FF424242</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFB0B0B0</color>
+    <color name="danger">#FFFF1744</color>
+    <color name="success">#FF00C853</color>
+</resources>
