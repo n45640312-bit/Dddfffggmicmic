@@ -127,7 +127,7 @@ class AudioEngine(private val cacheDir: File) {
         val inBuf = ByteArray(CHUNK_BYTES)
         val wavHeaderSize = 44
 
-        while (isRunning.get() && isActive) {
+        while (isRunning.get()) {
             try {
                 val read = audioRecord?.read(inBuf, 0, inBuf.size) ?: -1
                 if (read <= 0) {
