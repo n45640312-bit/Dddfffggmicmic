@@ -33,10 +33,10 @@ class AudioService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        engine = AudioEngine(cacheDir)
+        engine = AudioEngine(this)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ExtremeAmp::WakeLock")
-        wakeLock?.acquire(10 * 60 * 60 * 1000L) // 10 hours max
+        wakeLock?.acquire(10 * 60 * 60 * 1000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -45,7 +45,6 @@ class AudioService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-
         startForeground(NOTIFICATION_ID, buildNotification())
         return START_STICKY
     }
@@ -61,7 +60,7 @@ class AudioService : Service() {
     }
 
     fun updateParams(params: FilterParams) {
-        engine?.params = params
+        engine?.updateParams(params)
     }
 
     private fun createNotificationChannel() {
@@ -87,13 +86,11 @@ class AudioService : Service() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val openIntent = Intent(this, MainActivity::class.java)
         val openPending = PendingIntent.getActivity(
             this, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))
@@ -108,9 +105,7 @@ class AudioService : Service() {
     override fun onDestroy() {
         engine?.release()
         engine = null
-        wakeLock?.let {
-            if (it.isHeld) it.release()
-        }
+        wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         super.onDestroy()
     }

@@ -173,7 +173,7 @@ class AudioEngine(private val context: Context) {
             try {
                 inFile.writeBytes(inputBuffer.copyOf(read))
 
-                val filter = paramsRef.get().toFilterString()
+                val filter = paramsRef.get().buildFilterGraph(SAMPLE_RATE)
                 val cmd = "-y -f s16le -ar $SAMPLE_RATE -ac 1 -i ${inFile.absolutePath} " +
                         "-af \"$filter\" -f s16le -ar $SAMPLE_RATE -ac 1 ${outFile.absolutePath}"
 
