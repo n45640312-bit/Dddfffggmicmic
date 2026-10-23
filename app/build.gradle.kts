@@ -66,11 +66,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-ktx:1.9.3")
 
-    // FFmpegKit - full package (audio + video filters). Use maintained if needed.
-    // Official arthenica still widely used; for 16KB pages use maintained fork if available.
-    implementation("com.arthenica:ffmpeg-kit-full:6.0-2")
+    // FFmpegKit - using a version that is still available
+    implementation("com.arthenica:ffmpeg-kit-full:5.1")
 
-    // Coroutines for background processing
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
     testImplementation("junit:junit:4.13.2")
