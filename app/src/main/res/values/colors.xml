@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="primary">#FF1A237E</color>
-    <color name="primary_dark">#FF0D1442</color>
-    <color name="accent">#FFFF4081</color>
-    <color name="background">#FF121212</color>
-    <color name="surface">#FF1E1E1E</color>
-    <color name="slider_active">#FF00E676</color>
-    <color name="slider_inactive">#FF424242</color>
-    <color name="text_primary">#FFFFFFFF</color>
-    <color name="text_secondary">#FFB0B0B0</color>
-    <color name="danger">#FFFF1744</color>
-    <color name="success">#FF00C853</color>
+    <color name="background">#0A0A0F</color>
+    <color name="surface">#14141F</color>
+    <color name="text_primary">#F0F0FF</color>
+    <color name="text_secondary">#8888AA</color>
+    <color name="slider_active">#7C5CFF</color>
+    <color name="slider_inactive">#2A2A3D</color>
+    <color name="success">#00E676</color>
+    <color name="danger">#FF5252</color>
+    <color name="glow_purple">#B388FF</color>
+    <color name="credit_grey">#666680</color>
+    <color name="shimmer_white">#40FFFFFF</color>
 </resources>

@@ -57,4 +57,6 @@ dependencies {
     implementation("com.arthenica:smart-exception-java:0.2.1")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("com.airbnb.android:lottie:6.6.2")
+    implementation("com.airbnb.android:lottie:6.6.2")
 }
