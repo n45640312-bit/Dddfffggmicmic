@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#7C5CFF</color>
-    <color name="primary_dark">#5A3FD6</color>
-    <color name="accent">#00E676</color>
-    <color name="background">#0A0A0F</color>
-    <color name="surface">#14141F</color>
-    <color name="text_primary">#F0F0FF</color>
-    <color name="text_secondary">#8888AA</color>
-    <color name="slider_active">#7C5CFF</color>
-    <color name="slider_inactive">#2A2A3D</color>
-    <color name="success">#00E676</color>
-    <color name="danger">#FF5252</color>
-    <color name="glow_purple">#B388FF</color>
-    <color name="credit_grey">#666680</color>
-    <color name="shimmer_white">#40FFFFFF</color>
+    <color name="primary">#AA7C5CFF</color>
+    <color name="primary_dark">#885A3FD6</color>
+    <color name="accent">#AA00E676</color>
+    <color name="background">#00000000</color>
+    <color name="surface">#00000000</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#CCFFFFFF</color>
+    <color name="slider_active">#CCB388FF</color>
+    <color name="slider_inactive">#55FFFFFF</color>
+    <color name="success">#CC00E676</color>
+    <color name="danger">#FFFF5252</color>
+    <color name="glow_purple">#FFE0B0FF</color>
+    <color name="credit_grey">#AAFFFFFF</color>
+    <color name="transparent">#00000000</color>
+    <color name="semi_black">#66000000</color>
 </resources>

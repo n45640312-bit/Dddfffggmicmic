@@ -6,14 +6,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.view.View
 import android.widget.SeekBar
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.airbnb.lottie.LottieAnimationView
 import com.extreme.audioamplifier.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -22,36 +27,27 @@ class MainActivity : AppCompatActivity() {
     private var service: AudioService? = null
     private var bound = false
     private var isRunning = false
-
     private val params = FilterParams()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        val granted = results.values.all { it }
-        if (granted) {
-            startServiceAndBind()
-        } else {
-            Toast.makeText(this, R.string.permission_required, Toast.LENGTH_LONG).show()
-        }
+        if (results.values.all { it }) startServiceAndBind()
+        else Toast.makeText(this, R.string.permission_required, Toast.LENGTH_LONG).show()
     }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            val local = binder as AudioService.LocalBinder
-            service = local.getService()
+            service = (binder as AudioService.LocalBinder).getService()
             bound = true
-            service?.getEngine()?.onStatus = { status ->
-                runOnUiThread { binding.tvStatus.text = status }
-            }
-            service?.getEngine()?.onError = { err ->
+            service?.getEngine()?.onStatus = { s -> runOnUiThread { binding.tvStatus.text = s } }
+            service?.getEngine()?.onError = { e ->
                 runOnUiThread {
-                    binding.tvStatus.text = "Error: $err"
-                    Toast.makeText(this@MainActivity, err, Toast.LENGTH_SHORT).show()
+                    binding.tvStatus.text = "Error: $e"
+                    Toast.makeText(this@MainActivity, e, Toast.LENGTH_SHORT).show()
                 }
             }
         }
-
         override fun onServiceDisconnected(name: ComponentName?) {
             bound = false
             service = null
@@ -60,14 +56,33 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CrashHandler.install(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupBackgroundVideo()
         setupSliders()
         binding.btnToggle.setOnClickListener { toggleAmplifier() }
-
         checkPermissionsAndStart()
+    }
+
+    private fun setupBackgroundVideo() {
+        try {
+            val vv = binding.bgVideo
+            val uri = Uri.parse("android.resource://\( packageName/ \){R.raw.bgvideo}")
+            vv.setVideoURI(uri)
+            vv.setOnPreparedListener { mp ->
+                mp.isLooping = true
+                mp.setVolume(0f, 0f)
+                // scale to cover
+                vv.start()
+            }
+            vv.setOnErrorListener { _, _, _ ->
+                binding.bgVideo.visibility = View.GONE
+                true
+            }
+        } catch (_: Exception) {
+            binding.bgVideo.visibility = View.GONE
+        }
     }
 
     private fun checkPermissionsAndStart() {
@@ -78,11 +93,8 @@ class MainActivity : AppCompatActivity() {
         val missing = needed.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing.isEmpty()) {
-            startServiceAndBind()
-        } else {
-            permissionLauncher.launch(missing.toTypedArray())
-        }
+        if (missing.isEmpty()) startServiceAndBind()
+        else permissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun startServiceAndBind() {
@@ -92,138 +104,145 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleAmplifier() {
-        if (!bound || service == null) {
+        if (!bound) {
             Toast.makeText(this, "Service not ready", Toast.LENGTH_SHORT).show()
             return
         }
         if (isRunning) {
             service?.stopAmplifier()
-            binding.btnToggle.text = getString(R.string.start)
-            binding.btnToggle.setBackgroundColor(ContextCompat.getColor(this, R.color.success))
             isRunning = false
+            binding.btnToggle.text = getString(R.string.start)
         } else {
             service?.updateParams(params)
             service?.startAmplifier()
-            binding.btnToggle.text = getString(R.string.stop)
-            binding.btnToggle.setBackgroundColor(ContextCompat.getColor(this, R.color.danger))
             isRunning = true
+            binding.btnToggle.text = getString(R.string.stop)
         }
+    }
+
+    private fun bindThumb(seek: SeekBar, thumb: LottieAnimationView) {
+        thumb.setAnimation("border_green.json")
+        thumb.playAnimation()
+        thumb.loop(true)
+
+        val updatePos = {
+            seek.post {
+                val max = seek.width - seek.paddingStart - seek.paddingEnd
+                if (max <= 0) return@post
+                val ratio = seek.progress.toFloat() / seek.max.coerceAtLeast(1)
+                val x = seek.paddingStart + ratio * max - thumb.width / 2f
+                thumb.translationX = x.coerceAtLeast(0f)
+            }
+        }
+
+        seek.thumb.mutate().alpha = 0
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                updatePos()
+                if (fromUser) onSliderChanged(seek, progress)
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
+        seek.post { updatePos() }
+    }
+
+    private fun onSliderChanged(seek: SeekBar, p: Int) {
+        when (seek.id) {
+            R.id.seekGain -> {
+                params.gainDb = p * 0.4f
+                binding.tvGainValue.text = "%.1f dB".format(params.gainDb)
+            }
+            R.id.seekVolume -> {
+                params.volumeDb = p * 0.3f
+                binding.tvVolumeValue.text = "%.1f dB".format(params.volumeDb)
+            }
+            R.id.seekLoudness -> {
+                params.loudness = p / 100f
+                binding.tvLoudnessValue.text = "%.2f".format(params.loudness)
+            }
+            R.id.seekClarity -> {
+                params.clarity = p / 100f
+                binding.tvClarityValue.text = "%.2f".format(params.clarity)
+            }
+            R.id.seekPresence -> {
+                params.presence = p / 100f
+                binding.tvPresenceValue.text = "%.2f".format(params.presence)
+            }
+            R.id.seekNoiseCancel -> {
+                params.noiseCancel = p / 100f
+                binding.tvNoiseCancelValue.text = "%.2f".format(params.noiseCancel)
+            }
+            R.id.seekNoise -> {
+                params.noiseAdd = p / 100f
+                binding.tvNoiseValue.text = "%.2f".format(params.noiseAdd)
+            }
+            R.id.seekBass -> {
+                params.bassDb = (p - 50) / 2f
+                binding.tvBassValue.text = "%.1f dB".format(params.bassDb)
+            }
+            R.id.seekTreble -> {
+                params.trebleDb = (p - 50) / 2f
+                binding.tvTrebleValue.text = "%.1f dB".format(params.trebleDb)
+            }
+            R.id.seekPitch -> {
+                params.pitchFactor = 0.5f + p / 100f
+                binding.tvPitchValue.text = "%.2fx".format(params.pitchFactor)
+            }
+            R.id.seekEchoSlap -> {
+                params.echoSlap = p / 100f
+                binding.tvEchoSlapValue.text = "%.2f".format(params.echoSlap)
+            }
+            R.id.seekEcho1x -> {
+                params.echo1x = p / 100f
+                binding.tvEcho1xValue.text = "%.2f".format(params.echo1x)
+            }
+            R.id.seekEcho2x -> {
+                params.echo2x = p / 100f
+                binding.tvEcho2xValue.text = "%.2f".format(params.echo2x)
+            }
+            R.id.seekEchoLoop -> {
+                params.echoLoop = p / 100f
+                binding.tvEchoLoopValue.text = "%.2f".format(params.echoLoop)
+            }
+            R.id.seekEchoHall -> {
+                params.echoHall = p / 100f
+                binding.tvEchoHallValue.text = "%.2f".format(params.echoHall)
+            }
+        }
+        service?.updateParams(params)
     }
 
     private fun setupSliders() {
-        // Helper to keep UI + params in sync and push live to engine
-        fun update() {
-            service?.updateParams(params)
-        }
-
-        // Gain 0-40 dB
-        binding.seekGain.setOnSeekBarChangeListener(simpleListener { p ->
-            params.gainDb = p / 10f
-            binding.tvGainValue.text = "%.1f dB".format(params.gainDb)
-            update()
-        })
-
-        // Volume 0-30 dB
-        binding.seekVolume.setOnSeekBarChangeListener(simpleListener { p ->
-            params.volumeDb = p / 10f
-            binding.tvVolumeValue.text = "%.1f dB".format(params.volumeDb)
-            update()
-        })
-
-        // Loudness 0-25 dB
-        binding.seekLoudness.setOnSeekBarChangeListener(simpleListener { p ->
-            params.loudnessDb = p / 10f
-            binding.tvLoudnessValue.text = "%.1f dB".format(params.loudnessDb)
-            update()
-        })
-
-        // Clarity 0-18 dB
-        binding.seekClarity.setOnSeekBarChangeListener(simpleListener { p ->
-            params.clarityDb = p / 10f
-            binding.tvClarityValue.text = "%.1f dB".format(params.clarityDb)
-            update()
-        })
-
-        // Presence 0-20 dB
-        binding.seekPresence.setOnSeekBarChangeListener(simpleListener { p ->
-            params.presenceDb = p / 10f
-            binding.tvPresenceValue.text = "%.1f dB".format(params.presenceDb)
-            update()
-        })
-
-        // Noise Cancel 0-30
-        binding.seekNoiseCancel.setOnSeekBarChangeListener(simpleListener { p ->
-            params.noiseCancel = p / 10f
-            binding.tvNoiseCancelValue.text = "%.1f".format(params.noiseCancel)
-            update()
-        })
-
-        // Noise (add) 0-1.0
-        binding.seekNoise.setOnSeekBarChangeListener(simpleListener { p ->
-            params.noiseAmount = p / 200f
-            binding.tvNoiseValue.text = "%.2f".format(params.noiseAmount)
-            update()
-        })
-
-        // Treble -12 .. +24  (progress 0-240 → -12 to +24)
-        binding.seekTreble.setOnSeekBarChangeListener(simpleListener { p ->
-            params.trebleDb = (p - 120) / 5f
-            binding.tvTrebleValue.text = "%.1f dB".format(params.trebleDb)
-            update()
-        })
-
-        // Bass -12 .. +24
-        binding.seekBass.setOnSeekBarChangeListener(simpleListener { p ->
-            params.bassDb = (p - 120) / 5f
-            binding.tvBassValue.text = "%.1f dB".format(params.bassDb)
-            update()
-        })
-
-        // Pitch 0.5 .. 2.0 (progress 0-150 → 0.5 to 2.0)
-        binding.seekPitch.setOnSeekBarChangeListener(simpleListener { p ->
-            params.pitchFactor = 0.5f + (p / 100f)
-            binding.tvPitchValue.text = "%.2fx".format(params.pitchFactor)
-            update()
-        })
-
-        // Echoes 0-1
-        binding.seekEchoSlap.setOnSeekBarChangeListener(simpleListener { p ->
-            params.echoSlap = p / 100f
-            binding.tvEchoSlapValue.text = "%.2f".format(params.echoSlap)
-            update()
-        })
-        binding.seekEcho1x.setOnSeekBarChangeListener(simpleListener { p ->
-            params.echo1x = p / 100f
-            binding.tvEcho1xValue.text = "%.2f".format(params.echo1x)
-            update()
-        })
-        binding.seekEcho2x.setOnSeekBarChangeListener(simpleListener { p ->
-            params.echo2x = p / 100f
-            binding.tvEcho2xValue.text = "%.2f".format(params.echo2x)
-            update()
-        })
-        binding.seekEchoLoop.setOnSeekBarChangeListener(simpleListener { p ->
-            params.echoLoop = p / 100f
-            binding.tvEchoLoopValue.text = "%.2f".format(params.echoLoop)
-            update()
-        })
-        binding.seekEchoHall.setOnSeekBarChangeListener(simpleListener { p ->
-            params.echoHall = p / 100f
-            binding.tvEchoHallValue.text = "%.2f".format(params.echoHall)
-            update()
-        })
+        bindThumb(binding.seekGain, binding.thumbGain)
+        bindThumb(binding.seekVolume, binding.thumbVolume)
+        bindThumb(binding.seekLoudness, binding.thumbLoudness)
+        bindThumb(binding.seekClarity, binding.thumbClarity)
+        bindThumb(binding.seekPresence, binding.thumbPresence)
+        bindThumb(binding.seekNoiseCancel, binding.thumbNoiseCancel)
+        bindThumb(binding.seekNoise, binding.thumbNoise)
+        bindThumb(binding.seekBass, binding.thumbBass)
+        bindThumb(binding.seekTreble, binding.thumbTreble)
+        bindThumb(binding.seekPitch, binding.thumbPitch)
+        bindThumb(binding.seekEchoSlap, binding.thumbEchoSlap)
+        bindThumb(binding.seekEcho1x, binding.thumbEcho1x)
+        bindThumb(binding.seekEcho2x, binding.thumbEcho2x)
+        bindThumb(binding.seekEchoLoop, binding.thumbEchoLoop)
+        bindThumb(binding.seekEchoHall, binding.thumbEchoHall)
     }
 
-    private fun simpleListener(onProgress: (Int) -> Unit) =
-        object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) onProgress(progress)
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        }
+    override fun onResume() {
+        super.onResume()
+        try { binding.bgVideo.start() } catch (_: Exception) {}
+    }
+
+    override fun onPause() {
+        try { binding.bgVideo.pause() } catch (_: Exception) {}
+        super.onPause()
+    }
 
     override fun onDestroy() {
+        try { binding.bgVideo.stopPlayback() } catch (_: Exception) {}
         if (bound) {
             unbindService(connection)
             bound = false
