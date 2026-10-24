@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -14,26 +15,23 @@ class ErrorActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val scroll = ScrollView(this)
-        val text = TextView(this).apply {
+        val crashText = intent.getStringExtra("crash_text")
+            ?: CrashHandler.getLastCrash(this)
+            ?: "No crash log found"
+
+        val logView = TextView(this).apply {
+            text = crashText
             setTextIsSelectable(true)
             setPadding(32, 32, 32, 32)
             textSize = 12f
             setTextColor(0xFFEEEEEE.toInt())
         }
-        scroll.addView(text)
-        scroll.setBackgroundColor(0xFF1A1A1A.toInt())
 
-        val crashText = intent.getStringExtra("crash_text")
-            ?: CrashHandler.getLastCrash(this)
-            ?: "No crash log found"
+        val scroll = ScrollView(this).apply {
+            addView(logView)
+            setBackgroundColor(0xFF1A1A1A.toInt())
+        }
 
-        text.text = crashText
-
-        // Simple layout with copy button via title
-        setContentView(scroll)
-
-        // Long press or add button
         val copyBtn = Button(this).apply {
             text = "COPY LOG"
             setOnClickListener {
@@ -43,14 +41,13 @@ class ErrorActivity : AppCompatActivity() {
             }
         }
 
-        // Re-set with button on top
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFF1A1A1A.toInt())
             addView(copyBtn)
-            addView(scroll, android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT
+            addView(scroll, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
             ))
         }
         setContentView(layout)
