@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,7 +13,6 @@ import android.os.IBinder
 import android.view.View
 import android.widget.SeekBar
 import android.widget.Toast
-import android.widget.VideoView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -58,7 +56,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setupBackgroundVideo()
         setupSliders()
         binding.btnToggle.setOnClickListener { toggleAmplifier() }
@@ -68,12 +65,11 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackgroundVideo() {
         try {
             val vv = binding.bgVideo
-            val uri = Uri.parse("android.resource://\( packageName/ \){R.raw.bgvideo}")
+            val uri = Uri.parse("android.resource://" + packageName + "/" + R.raw.bgvideo)
             vv.setVideoURI(uri)
             vv.setOnPreparedListener { mp ->
                 mp.isLooping = true
                 mp.setVolume(0f, 0f)
-                // scale to cover
                 vv.start()
             }
             vv.setOnErrorListener { _, _, _ ->
@@ -124,6 +120,7 @@ class MainActivity : AppCompatActivity() {
         thumb.setAnimation("border_green.json")
         thumb.playAnimation()
         thumb.loop(true)
+        seek.thumb.mutate().alpha = 0
 
         val updatePos = {
             seek.post {
@@ -135,7 +132,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        seek.thumb.mutate().alpha = 0
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 updatePos()
@@ -151,63 +147,63 @@ class MainActivity : AppCompatActivity() {
         when (seek.id) {
             R.id.seekGain -> {
                 params.gainDb = p * 0.4f
-                binding.tvGainValue.text = "%.1f dB".format(params.gainDb)
+                binding.tvGainValue.text = String.format("%.1f dB", params.gainDb)
             }
             R.id.seekVolume -> {
                 params.volumeDb = p * 0.3f
-                binding.tvVolumeValue.text = "%.1f dB".format(params.volumeDb)
+                binding.tvVolumeValue.text = String.format("%.1f dB", params.volumeDb)
             }
             R.id.seekLoudness -> {
-                params.loudness = p / 100f
-                binding.tvLoudnessValue.text = "%.2f".format(params.loudness)
+                params.loudnessDb = p * 0.25f
+                binding.tvLoudnessValue.text = String.format("%.1f", params.loudnessDb)
             }
             R.id.seekClarity -> {
-                params.clarity = p / 100f
-                binding.tvClarityValue.text = "%.2f".format(params.clarity)
+                params.clarityDb = p * 0.18f
+                binding.tvClarityValue.text = String.format("%.1f", params.clarityDb)
             }
             R.id.seekPresence -> {
-                params.presence = p / 100f
-                binding.tvPresenceValue.text = "%.2f".format(params.presence)
+                params.presenceDb = p * 0.2f
+                binding.tvPresenceValue.text = String.format("%.1f", params.presenceDb)
             }
             R.id.seekNoiseCancel -> {
-                params.noiseCancel = p / 100f
-                binding.tvNoiseCancelValue.text = "%.2f".format(params.noiseCancel)
+                params.noiseCancel = p * 0.3f
+                binding.tvNoiseCancelValue.text = String.format("%.1f", params.noiseCancel)
             }
             R.id.seekNoise -> {
-                params.noiseAdd = p / 100f
-                binding.tvNoiseValue.text = "%.2f".format(params.noiseAdd)
+                params.noiseAmount = p / 100f
+                binding.tvNoiseValue.text = String.format("%.2f", params.noiseAmount)
             }
             R.id.seekBass -> {
                 params.bassDb = (p - 50) / 2f
-                binding.tvBassValue.text = "%.1f dB".format(params.bassDb)
+                binding.tvBassValue.text = String.format("%.1f dB", params.bassDb)
             }
             R.id.seekTreble -> {
                 params.trebleDb = (p - 50) / 2f
-                binding.tvTrebleValue.text = "%.1f dB".format(params.trebleDb)
+                binding.tvTrebleValue.text = String.format("%.1f dB", params.trebleDb)
             }
             R.id.seekPitch -> {
                 params.pitchFactor = 0.5f + p / 100f
-                binding.tvPitchValue.text = "%.2fx".format(params.pitchFactor)
+                binding.tvPitchValue.text = String.format("%.2fx", params.pitchFactor)
             }
             R.id.seekEchoSlap -> {
                 params.echoSlap = p / 100f
-                binding.tvEchoSlapValue.text = "%.2f".format(params.echoSlap)
+                binding.tvEchoSlapValue.text = String.format("%.2f", params.echoSlap)
             }
             R.id.seekEcho1x -> {
                 params.echo1x = p / 100f
-                binding.tvEcho1xValue.text = "%.2f".format(params.echo1x)
+                binding.tvEcho1xValue.text = String.format("%.2f", params.echo1x)
             }
             R.id.seekEcho2x -> {
                 params.echo2x = p / 100f
-                binding.tvEcho2xValue.text = "%.2f".format(params.echo2x)
+                binding.tvEcho2xValue.text = String.format("%.2f", params.echo2x)
             }
             R.id.seekEchoLoop -> {
                 params.echoLoop = p / 100f
-                binding.tvEchoLoopValue.text = "%.2f".format(params.echoLoop)
+                binding.tvEchoLoopValue.text = String.format("%.2f", params.echoLoop)
             }
             R.id.seekEchoHall -> {
                 params.echoHall = p / 100f
-                binding.tvEchoHallValue.text = "%.2f".format(params.echoHall)
+                binding.tvEchoHallValue.text = String.format("%.2f", params.echoHall)
             }
         }
         service?.updateParams(params)
