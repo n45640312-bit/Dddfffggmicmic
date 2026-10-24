@@ -52,8 +52,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-ktx:1.9.3")
 
-    // Maintained FFmpegKit (old com.arthenica ones removed from Maven)
+    // Maintained FFmpegKit + required smart-exception
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
+    implementation("com.arthenica:smart-exception-java:0.2.1")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }
